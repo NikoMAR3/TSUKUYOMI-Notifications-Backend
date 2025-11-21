@@ -1,4 +1,4 @@
-package edu.dosw.infrastructure.web;
+package edu.dosw.infrastructure.web.controllers;
 
 import edu.dosw.application.ports.NotificationQueryPort;
 import edu.dosw.application.dto.query.NotificationResponse;

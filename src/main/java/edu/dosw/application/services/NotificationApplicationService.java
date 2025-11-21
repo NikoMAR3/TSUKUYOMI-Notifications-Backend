@@ -26,22 +26,28 @@ public class NotificationApplicationService implements EventServicePort {
     @Transactional
     public void processSuccessfulLogin(NotificationCommand command) {
         try {
-            log.info("Processing login notification for user: {}", command.getUserId());
+            log.info("🔍 DEBUG - Processing login for user: {}, email: {}", command.getUserId(), command.getEmail());
 
             Notification notification = createLoginNotification(command);
+            log.info("🔍 DEBUG - Notification created - ID: {}, UserEmail: {}",
+                    notification.getId().getValue(), notification.getUserEmail());
+
             Notification savedNotification = notificationRepositoryPort.save(notification);
+            log.info("🔍 DEBUG - Notification saved to DB - UserEmail in DB: {}", savedNotification.getUserEmail());
 
             boolean emailSuccessful = emailServicePort.sendNotificationEmail(savedNotification);
+            log.info("🔍 DEBUG - Email service result: {}", emailSuccessful);
+
             savedNotification.addDeliveryAttempt(Channel.EMAIL, emailSuccessful,
                     emailSuccessful ? null : "Error sending email");
 
             notificationRepositoryPort.save(savedNotification);
             webSocketEmitterPort.emitUserNotification(command.getUserId(), savedNotification);
 
-            log.info("Login notification processed successfully: {}", savedNotification.getId().getValue());
+            log.info("✅ Login notification processed successfully: {}", savedNotification.getId().getValue());
 
         } catch (Exception e) {
-            log.error("Error processing login notification: {}", e.getMessage(), e);
+            log.error("❌ Error processing login notification: {}", e.getMessage(), e);
             throw new RuntimeException("Error processing login notification", e);
         }
     }
@@ -93,12 +99,13 @@ public class NotificationApplicationService implements EventServicePort {
         return Notification.builder()
                 .id(new NotificationId(UUID.randomUUID().toString()))
                 .userId(command.getUserId())
+                .userEmail(command.getEmail())
                 .title("Login detected")
                 .message("Your account was accessed from IP: " + command.getIp())
                 .type(NotificationType.SECURITY_LOGIN)
                 .status(NotificationStatus.PENDING)
                 .channels(java.util.List.of(Channel.EMAIL, Channel.WEB_SOCKET))
-                .deliveryAttempts(java.util.List.of())
+                .deliveryAttempts(new java.util.ArrayList<>())
                 .createdAt(java.time.LocalDateTime.now())
                 .build();
     }
@@ -107,12 +114,13 @@ public class NotificationApplicationService implements EventServicePort {
         return Notification.builder()
                 .id(new NotificationId(UUID.randomUUID().toString()))
                 .userId(command.getUserId())
+                .userEmail(command.getEmail())  // ← ¡ESTA LÍNEA FALTABA!
                 .title("New Order Received")
                 .message("You have a new order #" + command.getOrderId() + " to prepare")
                 .type(NotificationType.SELLER_NEW_ORDER)
                 .status(NotificationStatus.PENDING)
                 .channels(java.util.List.of(Channel.WEB_SOCKET, Channel.EMAIL))
-                .deliveryAttempts(java.util.List.of())
+                .deliveryAttempts(new java.util.ArrayList<>())
                 .createdAt(java.time.LocalDateTime.now())
                 .metadata("{\"orderId\":\"" + command.getOrderId() + "\",\"pointOfSaleId\":\"" + command.getPointOfSaleId() + "\"}")
                 .build();
@@ -123,17 +131,17 @@ public class NotificationApplicationService implements EventServicePort {
         return Notification.builder()
                 .id(new NotificationId(UUID.randomUUID().toString()))
                 .userId(command.getUserId())
+                .userEmail(command.getEmail())  // ← ¡ESTA LÍNEA FALTABA!
                 .title("Order Status Update")
                 .message("Order #" + command.getOrderId() + " is now " + statusMessage)
                 .type(NotificationType.ORDER_CONFIRMED)
                 .status(NotificationStatus.PENDING)
                 .channels(java.util.List.of(Channel.EMAIL, Channel.WEB_SOCKET))
-                .deliveryAttempts(java.util.List.of())
+                .deliveryAttempts(new java.util.ArrayList<>())
                 .createdAt(java.time.LocalDateTime.now())
                 .metadata("{\"orderId\":\"" + command.getOrderId() + "\",\"status\":\"" + command.getOrderStatus() + "\"}")
                 .build();
     }
-
     private String getStatusMessage(String status) {
         return switch (status.toLowerCase()) {
             case "confirmed" -> "confirmed and in preparation";

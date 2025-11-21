@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
 import jakarta.mail.MessagingException;
@@ -21,26 +22,28 @@ public class EmailServiceAdapter implements EmailServicePort {
     @Override
     public boolean sendNotificationEmail(Notification notification) {
         try {
-            String userEmail = notification.getUserEmail();
-
-            if (userEmail == null || userEmail.trim().isEmpty()) {
-                log.error("Cannot send email: User email is null or empty for userId: {}", notification.getUserId());
-                return false;
+            if (mailSender instanceof JavaMailSenderImpl) {
+                JavaMailSenderImpl impl = (JavaMailSenderImpl) mailSender;
+                log.debug("GMAIL CONFIG - Host: {}, Port: {}, Username: {}",
+                        impl.getHost(), impl.getPort(), impl.getUsername());
             }
 
+            String userEmail = notification.getUserEmail();
+            log.debug("Sending to: {}", userEmail);
+
             SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom("manuelalejandro.guarnizo@gmail.com");
             message.setTo(userEmail);
             message.setSubject(notification.getTitle());
             message.setText(buildEmailText(notification));
 
             mailSender.send(message);
-
-            log.info("Email sent successfully to: {} for user: {}", userEmail, notification.getUserId());
+            log.info("GMAIL SUCCESS - Email sent to: {}", userEmail);
             return true;
 
         } catch (Exception e) {
-            log.error("Error sending email to {} for user {}: {}",
-                    notification.getUserEmail(), notification.getUserId(), e.getMessage());
+            log.error("GMAIL ERROR - Auth failed: {}", e.getMessage());
+            log.error("Full error: ", e);
             return false;
         }
     }
@@ -65,7 +68,6 @@ public class EmailServiceAdapter implements EmailServicePort {
             return false;
         }
     }
-
 
     private String buildEmailText(Notification notification) {
         return String.format(

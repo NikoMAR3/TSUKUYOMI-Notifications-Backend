@@ -1,12 +1,11 @@
 package edu.dosw.config;
 
-import edu.dosw.infrastructure.event.LoginEventListener;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.listener.ChannelTopic;
+import org.springframework.data.redis.listener.PatternTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.data.redis.listener.adapter.MessageListenerAdapter;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
@@ -22,21 +21,24 @@ public class RedisConfig {
         template.setConnectionFactory(connectionFactory);
         template.setKeySerializer(new StringRedisSerializer());
         template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
+        template.setHashKeySerializer(new StringRedisSerializer());
+        template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
         return template;
     }
 
     @Bean
     @ConditionalOnProperty(name = "redis.listener.enabled", havingValue = "true", matchIfMissing = true)
     public RedisMessageListenerContainer redisContainer(RedisConnectionFactory connectionFactory,
-                                                        MessageListenerAdapter loginListenerAdapter) {
+                                                        MessageListenerAdapter eventListenerAdapter) {
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();
         container.setConnectionFactory(connectionFactory);
-        container.addMessageListener(loginListenerAdapter, new ChannelTopic("login.exitoso"));
+        container.addMessageListener(eventListenerAdapter, new PatternTopic("events.*"));
+
         return container;
     }
 
     @Bean
-    public MessageListenerAdapter loginListenerAdapter(LoginEventListener listener) {
+    public MessageListenerAdapter eventListenerAdapter(edu.dosw.infrastructure.event.GeneralEventListener listener) {
         return new MessageListenerAdapter(listener, "onMessage");
     }
 }

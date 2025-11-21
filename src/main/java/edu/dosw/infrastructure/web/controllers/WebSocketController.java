@@ -1,4 +1,4 @@
-package edu.dosw.infrastructure.web;
+package edu.dosw.infrastructure.web.controllers;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
